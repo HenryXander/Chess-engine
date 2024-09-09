@@ -1,17 +1,10 @@
 from chess.pieces import Pawn, Rook, Knight, Bishop, Queen, King
 import pygame
-import pickle
 import os.path
 
 class Board:
     def __init__(self):
-        if os.path.isfile('initial_board_pickle'):
-            with open('initial_board_pickle', 'rb') as file:
-                self.board = pickle.load(file)
-        else:
-            self.board = self.__create_board()
-            with open('initial_board_pickle', 'wb') as file:
-                pickle.dump(self.board, file)
+        self.board = self.__create_board()
 
         self.square_size = 80  # Size of each square on the chessboard
         self.window_size = self.square_size * 8
@@ -20,22 +13,8 @@ class Board:
         pygame.display.set_caption("Chess Board")
 
         self.colors = [pygame.Color(255, 206, 158), pygame.Color(209, 139, 71)]  # Light and dark squares
-
-        if os.path.isfile('initial_blocking_map_pickle'):
-            with open('initial_blocking_map_pickle', 'rb') as file:
-                self.pieces_blocking_map = pickle.load(file)
-        else:
-            self.pieces_blocking_map = self.__initialize_blocking_map()
-            with open('initial_blocking_map_pickle', 'wb') as file:
-                pickle.dump(self.pieces_blocking_map, file)
-
-        if os.path.isfile('initial_move_map_pickle'):
-            with open('initial_move_map_pickle', 'rb') as file:
-                self.pieces_move_map = pickle.load(file)
-        else:
-            self.pieces_move_map = self.__initialize_move_map()
-            with open('initial_move_map_pickle', 'wb') as file:
-                pickle.dump(self.pieces_move_map, file)
+        self.pieces_blocking_map = self.__initialize_blocking_map()
+        self.pieces_move_map = self.__initialize_move_map()
         self.update_legal_moves()
 
 
