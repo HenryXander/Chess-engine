@@ -17,9 +17,6 @@ class Board:
         self.pieces_move_map = self.__initialize_move_map()
         self.update_legal_moves()
 
-
-
-
     def __create_board(self):
         board = [[None for _ in range(8)] for _ in range(8)]
         self.__setup_pieces(board)
@@ -51,7 +48,8 @@ class Board:
             for j in range(8):
                 piece = self.board[i][j]
                 if piece is not None:
-                    free_spots = self.open_up(piece)
+                    result = self.get_free_spots_and_blocking(piece)
+                    free_spots = result[0]
                     map[piece] = free_spots
         return map
 
@@ -73,307 +71,115 @@ class Board:
     def display(self):
         self.__draw_board()
 
-
     def close_out(self, piece):
-        blocked_pieces = self.close_out_diag(piece)
-        blocked_pieces += self.__close_out_hor(piece)
-        blocked_pieces += self.__close_out_vert(piece)
-        blocked_pieces += self.close_out_L(piece)
-        return blocked_pieces
+        (free_spots, blocking_pieces) = self.__get_free_spots_and_blocking_DIAGONAL(piece)
+        result = self.__get_free_spots_and_blocking_STRAIGHT(piece)
+        blocking_pieces += result[1]
+        result = self.__get_free_spots_and_blocking_L(piece)
+        blocking_pieces += result[1]
+        return blocking_pieces
 
-    def close_out_diag(self, piece):
-        blocked_pieces = []
-        blocked_pieces += self.__close_out_diagonal_down(piece)
-        blocked_pieces += self.__close_out_diagonal_up(piece)
-        return blocked_pieces
-    def __close_out_diagonal_up(self, piece):
-        blocked_pieces = []
-        i, j = piece.position
-        for k in range(1, min(7 - i, j) + 1):
-            spot = self.board[i + k][j - k]
-            if spot is not None:
-                if isinstance(spot, Bishop) or isinstance(spot, Queen):
-                    blocked_pieces.append(spot)
-                if k == 1 and isinstance(spot, King):
-                    blocked_pieces.append(spot)
-                break
-        for k in range(1, min(i, 7 - j)):
-            spot = self.board[i - k][j + k]
-            if spot is not None:
-                if isinstance(spot, Bishop) or isinstance(spot, Queen):
-                    blocked_pieces.append(spot)
-                if k == 1 and isinstance(spot, King):
-                    blocked_pieces.append(spot)
-                break
-        return blocked_pieces
-    def __close_out_diagonal_down(self, piece):
-        blocked_pieces = []
-        i, j = piece.position
-        for k in range(1, min(i, j) + 1):
-            spot = self.board[i - k][j - k]
-            if spot is not None:
-                if isinstance(spot, Bishop) or isinstance(spot, Queen):
-                    blocked_pieces.append(spot)
-                if k == 1 and isinstance(spot, King):
-                    blocked_pieces.append(spot)
-                break
-        for k in range(1, min(8 - i, 8 - j)):
-            spot = self.board[i + k][j + k]
-            if spot is not None:
-                if isinstance(spot, Bishop) or isinstance(spot, Queen):
-                    blocked_pieces.append(spot)
-                if k == 1 and isinstance(spot, King):
-                    blocked_pieces.append(spot)
-                break
-        return blocked_pieces
-
-    def close_out_straight(self, piece):
-        blocked_pieces = []
-        blocked_pieces += self.__close_out_hor(piece)
-        blocked_pieces += self.__close_out_vert(piece)
-        return blocked_pieces
-    def __close_out_hor(self, piece):
-        blocked_pieces = []
-        i, j = piece.position
-        for k in range(1, j + 1):
-            spot = self.board[i][j - k]
-            if spot is not None:
-                if isinstance(spot, Rook) or isinstance(spot, Queen):
-                    blocked_pieces.append(spot)
-                if k == 1 and isinstance(spot, King):
-                    blocked_pieces.append(spot)
-                break
-        for k in range(1, 8 - j):
-            spot = self.board[i][j + k]
-            if spot is not None:
-                if isinstance(spot, Rook) or isinstance(spot, Queen):
-                    blocked_pieces.append(spot)
-                if k == 1 and isinstance(spot, King):
-                    blocked_pieces.append(spot)
-                break
-        return blocked_pieces
-    def __close_out_vert(self, piece):
-        blocked_pieces = []
-        i, j = piece.position
-        if piece.color == 'white':
-            if i - 1 >= 0:
-                spot = self.board[i - 1][j]
-                if isinstance(spot, Pawn):
-                    blocked_pieces.append(spot)
-            if i - 2 >= 0:
-                spot = self.board[i - 2][j]
-                if isinstance(spot, Pawn):
-                    if spot.first_move:
-                        blocked_pieces.append(spot)
-        else:
-            if i + 1 < 8:
-                spot = self.board[i + 1][j]
-                if isinstance(spot, Pawn):
-                    blocked_pieces.append(spot)
-            if i + 2 < 8:
-                spot = self.board[i + 2][j]
-                if isinstance(spot, Pawn):
-                    if spot.first_move:
-                        blocked_pieces.append(spot)
-
-        for k in range(1, i + 1):
-            spot = self.board[i - k][j]
-            if spot is not None:
-                if isinstance(spot, Rook) or isinstance(spot, Queen):
-                    blocked_pieces.append(spot)
-                if k == 1 and isinstance(spot, King):
-                    blocked_pieces.append(spot)
-                break
-        for k in range(1, 8 - i):
-            spot = self.board[i + k][j]
-            if spot is not None:
-                if isinstance(spot, Rook) or isinstance(spot, Queen):
-                    blocked_pieces.append(spot)
-                if k == 1 and isinstance(spot, King):
-                    blocked_pieces.append(spot)
-                break
-        return blocked_pieces
-
-    def close_out_L(self, piece):
-        blocked_pieces = []
-        i, j = piece.position
-        spots = []
-
-        if i >= 2 and j >= 2:
-            spots += [
-                self.board[i - 2][j - 1],
-                self.board[i - 1][j - 2]
-            ]
-            if i + 1 < 8 and j + 1 < 8:
-                spots += [
-                    self.board[i - 2][j + 1],
-                    self.board[i + 1][j - 2]
-                ]
-        else:
-            if i >= 2:
-                if j - 1 >= 0:
-                    spots += [
-                        self.board[i - 2][j - 1]
-                    ]
-                if j + 1 < 8:
-                    spots += [
-                        self.board[i - 2][j + 1]
-                    ]
-            if j >= 2:
-                if i - 1 >= 0:
-                    spots += [
-                        self.board[i - 1][j - 2]
-                    ]
-                if i + 1 < 8:
-                    spots += [
-                        self.board[i + 1][j - 2]
-                    ]
-
-        if i + 2 < 8 and j + 2 < 8:
-            spots += [
-                self.board[i + 2][j + 1],
-                self.board[i + 1][j + 2]
-            ]
-            if i - 1 >= 0 and j - 1 >= 0:
-                spots += [
-                    self.board[i + 2][j - 1],
-                    self.board[i - 1][j + 2]
-                ]
-        else:
-            if i + 2 < 8:
-                if j + 1 < 8:
-                    spots += [
-                        self.board[i + 2][j + 1]
-                    ]
-                if j - 1 >= 0:
-                    spots += [
-                        self.board[i + 2][j - 1]
-                ]
-            if j + 2 < 8:
-                if i + 1 < 8:
-                    spots += [
-                        self.board[i + 1][j + 2]
-                    ]
-                if i - 1 >= 0:
-                    spots += [
-                        self.board[i - 1][j + 2]
-                    ]
-
-        for spot in spots:
-            if isinstance(spot, Knight):
-                blocked_pieces.append(spot)
-        return blocked_pieces
-
-
-    def open_up(self, piece):
-        free_spots = []
+    def get_free_spots_and_blocking(self, piece):
         if isinstance(piece, Bishop) or isinstance(piece, Queen):
-            free_spots = self.open_up_diagonal(piece)
+            (free_spots, blocking_pieces) = self.__get_free_spots_and_blocking_DIAGONAL(piece)
             if isinstance(piece, Queen):
-                free_spots += self.open_up_straight(piece)
-            return free_spots
+                result = self.__get_free_spots_and_blocking_STRAIGHT(piece)
+                free_spots += result[0]
+                blocking_pieces += result[1]
+            return (free_spots, blocking_pieces)
         elif isinstance(piece, Rook) or isinstance(piece, Queen):
-            free_spots = self.open_up_straight(piece)
+            (free_spots, blocking_pieces) = self.__get_free_spots_and_blocking_STRAIGHT(piece)
             if isinstance(piece, Queen):
-                free_spots += self.open_up_diagonal(piece)
-            return free_spots
+                result = self.__get_free_spots_and_blocking_DIAGONAL(piece)
+                free_spots += result[0]
+                blocking_pieces += result[1]
+            return (free_spots, blocking_pieces)
         elif isinstance(piece, Knight):
-            free_spots = self.open_up_L(piece)
-            return free_spots
+            return self.__get_free_spots_and_blocking_L(piece)
         elif isinstance(piece, Pawn):
-            free_spots = self.open_up_pawn(piece)
-            return free_spots
+            return self.__get_free_spots_and_blocking_Pawn(piece)
         elif isinstance(piece, King):
-            free_spots = self.open_up_king(piece)
-            return free_spots
-        return free_spots
+            return self.__get_free_spots_and_blocking_King(piece)
+        else:
+            print("No valid piece")
+            return None
 
-    def open_up_diagonal(self, piece):
+    def __get_free_spots_and_blocking_DIAGONAL(self, piece):
         free_spots = []
-        free_spots += self.__open_up_diagonal_up(piece)
-        free_spots += self.__open_up_diagonal_down(piece)
-        return free_spots
-    def __open_up_diagonal_up(self, piece):
-        free_spots = []
+        blocking_pieces = []
         i, j = piece.position
+        #diagonal UP /
         for k in range(1, min(7 - i, j) + 1):
             spot = self.board[i + k][j - k]
             if spot is None:
                 free_spots.append((i + k, j - k))
             if spot is not None:
-                self.pieces_blocking_map[spot].add(piece)
+                blocking_pieces.append(spot)
                 break
         for k in range(1, min(i, 7 - j)):
             spot = self.board[i - k][j + k]
             if spot is None:
                 free_spots.append((i - k, j + k))
             if spot is not None:
-                self.pieces_blocking_map[spot].add(piece)
+                blocking_pieces.append(spot)
                 break
-        return free_spots
-    def __open_up_diagonal_down(self, piece):
-        free_spots = []
-        i, j = piece.position
+        #diagonal DOWN \
         for k in range(1, min(i, j) + 1):
             spot = self.board[i - k][j - k]
             if spot is None:
                 free_spots.append((i - k, j - k))
             if spot is not None:
-                self.pieces_blocking_map[spot].add(piece)
+                blocking_pieces.append(spot)
                 break
         for k in range(1, min(8 - i, 8 - j)):
             spot = self.board[i + k][j + k]
             if spot is None:
                 free_spots.append((i + k, j + k))
             if spot is not None:
-                self.pieces_blocking_map[spot].add(piece)
+                blocking_pieces.append(spot)
                 break
-        return free_spots
+        return (free_spots, blocking_pieces)
 
-    def open_up_straight(self, piece):
+    def __get_free_spots_and_blocking_STRAIGHT(self, piece):
         free_spots = []
-        free_spots += self.__open_up_hor(piece)
-        free_spots += self.__open_up_vert(piece)
-        return free_spots
-    def __open_up_hor(self, piece):
-        free_spots = []
+        blocking_pieces = []
         i, j = piece.position
+        #straight horizontal
         for k in range(1, j + 1):
             spot = self.board[i][j - k]
             if spot is None:
                 free_spots.append((i, j - k))
             if spot is not None:
-                self.pieces_blocking_map[spot].add(piece)
+                blocking_pieces.append(spot)
                 break
         for k in range(1, 8 - j):
             spot = self.board[i][j + k]
             if spot is None:
                 free_spots.append((i, j + k))
             if spot is not None:
-                self.pieces_blocking_map[spot].add(piece)
+                blocking_pieces.append(spot)
                 break
-        return free_spots
-    def __open_up_vert(self, piece):
-        free_spots = []
-        i, j = piece.position
+
+        #straight vertical
         for k in range(1, i + 1):
             spot = self.board[i - k][j]
             if spot is None:
                 free_spots.append((i - k, j))
             if spot is not None:
-                self.pieces_blocking_map[spot].add(piece)
+                blocking_pieces.append(spot)
                 break
         for k in range(1, 8 - i):
             spot = self.board[i + k][j]
             if spot is None:
                 free_spots.append((i + k, j))
             if spot is not None:
-                self.pieces_blocking_map[spot].add(piece)
+                blocking_pieces.append(spot)
                 break
-        return free_spots
+        return (free_spots, blocking_pieces)
 
-    def open_up_L(self, piece):
+    def __get_free_spots_and_blocking_L(self, piece):
         free_spots = []
+        blocking_pieces = []
         i, j = piece.position
         if (i - 2) >= 0:
             if (j - 1) >= 0:
@@ -381,56 +187,57 @@ class Board:
                 if spot is None:
                     free_spots.append((i - 2, j - 1))
                 if spot is not None:
-                    self.pieces_blocking_map[spot].add(piece)
+                    blocking_pieces.append(spot)
             if (j + 1 < 8):
                 spot = self.board[i - 2][j + 1]
                 if spot is None:
                     free_spots.append((i - 2, j + 1))
                 if spot is not None:
-                    self.pieces_blocking_map[spot].add(piece)
+                    blocking_pieces.append(spot)
         if (i - 1) >= 0:
             if (j - 2) >= 0:
                 spot = self.board[i - 1][j - 2]
                 if spot is None:
                     free_spots.append((i - 1, j - 2))
                 if spot is not None:
-                    self.pieces_blocking_map[spot].add(piece)
+                    blocking_pieces.append(spot)
             if (j + 2 < 8):
                 spot = self.board[i - 1][j + 2]
                 if spot is None:
                     free_spots.append((i - 1, j + 2))
                 if spot is not None:
-                    self.pieces_blocking_map[spot].add(piece)
+                    blocking_pieces.append(spot)
         if (i + 1) < 8:
             if (j - 2) >= 0:
                 spot = self.board[i + 1][j - 2]
                 if spot is None:
                     free_spots.append((i + 1, j + 2))
                 if spot is not None:
-                    self.pieces_blocking_map[spot].add(piece)
+                    blocking_pieces.append(spot)
             if (j + 2 < 8):
                 spot = self.board[i + 1][j + 2]
                 if spot is None:
                     free_spots.append((i + 1, j + 2))
                 if spot is not None:
-                    self.pieces_blocking_map[spot].add(piece)
+                    blocking_pieces.append(spot)
         if (i + 2) < 8:
             if (j - 1) >= 0:
                 spot = self.board[i + 2][j - 1]
                 if spot is None:
                     free_spots.append((i + 2, j - 1))
                 if spot is not None:
-                    self.pieces_blocking_map[spot].add(piece)
+                    blocking_pieces.append(spot)
             if (j + 1 < 8):
                 spot = self.board[i + 2][j + 1]
                 if spot is None:
                     free_spots.append((i + 2, j + 1))
                 if spot is not None:
-                    self.pieces_blocking_map[spot].add(piece)
-        return free_spots
+                    blocking_pieces.append(spot)
+        return (free_spots, blocking_pieces)
 
-    def open_up_pawn(self, piece):
+    def __get_free_spots_and_blocking_Pawn(self, piece):
         free_spots = []
+        blocking_pieces = []
         i, j = piece.position
         if piece.color == 'white':
             spot = self.board[i + 1][j]
@@ -441,9 +248,9 @@ class Board:
                     if spot is None:
                         free_spots.append((i + 2, j))
                     if spot is not None:
-                        self.pieces_blocking_map[spot].add(piece)
+                        blocking_pieces.append(spot)
             if spot is not None:
-                self.pieces_blocking_map[spot].add(piece)
+                blocking_pieces.append(spot)
         else:
             spot = self.board[i - 1][j]
             if spot is None:
@@ -453,13 +260,14 @@ class Board:
                     if spot is None:
                         free_spots.append((i - 2, j))
                     if spot is not None:
-                        self.pieces_blocking_map[spot].add(piece)
+                        blocking_pieces.append(spot)
             if spot is not None:
-                self.pieces_blocking_map[spot].add(piece)
-        return free_spots
+                blocking_pieces.append(spot)
+        return (free_spots, blocking_pieces)
 
-    def open_up_king(self, piece):
+    def __get_free_spots_and_blocking_King(self, piece):
         free_spots = []
+        blocking_pieces = []
         i, j = piece.position
         if i - 1 >= 0:
             if j - 1 >= 0:
@@ -467,48 +275,51 @@ class Board:
                 if spot is None:
                     free_spots.append((i - 1, j - 1))
                 if spot is not None:
-                    self.pieces_blocking_map[spot].add(piece)
+                    blocking_pieces.append(spot)
 
                 spot = self.board[i][j - 1]
                 if spot is None:
                     free_spots.append((i, j - 1))
                 if spot is not None:
-                    self.pieces_blocking_map[spot].add(piece)
+                    blocking_pieces.append(spot)
             spot = self.board[i - 1][j]
             if spot is None:
                 free_spots.append((i - 1, j))
             if spot is not None:
-                self.pieces_blocking_map[spot].add(piece)
+                blocking_pieces.append(spot)
             if j + 1 < 8:
                 spot = self.board[i - 1][j + 1]
                 if spot is None:
                     free_spots.append((i - 1, j + 1))
                 if spot is not None:
-                    self.pieces_blocking_map[spot].add(piece)
+                    blocking_pieces.append(spot)
                 spot = self.board[i][j + 1]
                 if spot is None:
                     free_spots.append((i, j + 1))
                 if spot is not None:
-                    self.pieces_blocking_map[spot].add(piece)
+                    blocking_pieces.append(spot)
         if i + 1 < 8:
             if j - 1 >= 0:
                 spot = self.board[i + 1][j - 1]
                 if spot is None:
                     free_spots.append((i + 1, j - 1))
                 if spot is not None:
-                    self.pieces_blocking_map[spot].add(piece)
+                    blocking_pieces.append(spot)
             spot = self.board[i + 1][j]
             if spot is None:
                 free_spots.append((i + 1, j))
             if spot is not None:
-                self.pieces_blocking_map[spot].add(piece)
+                blocking_pieces.append(spot)
             if j + 1 < 8:
                 spot = self.board[i + 1][j + 1]
                 if spot is None:
                     free_spots.append((i + 1, j + 1))
                 if spot is not None:
-                    self.pieces_blocking_map[spot].add(piece)
-        return free_spots
+                    blocking_pieces.append(spot)
+        return (free_spots, blocking_pieces)
+
+
+
 
     def process_move(self, player, move):
         piece = move["piece"]
@@ -525,10 +336,11 @@ class Board:
         all_impacted_pieces = old_pieces_blocked_by_piece.union(set(new_pieces_blocked_by_piece))
         self.pieces_blocking_map[piece] = set(new_pieces_blocked_by_piece)
         for impacted_piece in all_impacted_pieces:
-            free_moves = self.open_up(impacted_piece)
-            self.pieces_move_map[impacted_piece] = free_moves
-            impacted_piece.set_legal_moves(free_moves)
-
+            (free_spots, blocking_pieces) = self.get_free_spots_and_blocking(piece)
+            for blocking_piece in blocking_pieces:
+                self.pieces_blocking_map[blocking_piece].add(piece)
+            self.pieces_move_map[impacted_piece] = free_spots
+            impacted_piece.set_legal_moves(free_spots)
 
     def get_piece(self, coords):
         return self.board[coords[0]][coords[1]]
