@@ -10,16 +10,15 @@ class Game:
     def play(self):
         pygame.init()
         running = True
+        self.board.display()
+        pygame.display.flip()
         while running:
             # Handle events
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-                if not self.is_game_over():
-                    # Check for mouse click event
-                    if event.type == pygame.MOUSEBUTTONDOWN:
-                        if event.button == 1:
-                            self.handle_turn()
+            if not self.is_game_over():
+                self.handle_turn()
             self.board.display()
             pygame.display.flip()
         pygame.quit()
@@ -54,6 +53,14 @@ class Game:
     def choose_move_spot(self, piece):
         piece_moves = piece.get_legal_moves()
         print('legal_moves: {}'.format(piece_moves))
+
+        for legal_move in piece_moves:
+            (row, col) = legal_move
+            legal_spot_image = pygame.image.load(f'chess\images\legal_move_spot.png')
+            legal_spot_image = pygame.transform.scale(legal_spot_image, (self.board.square_size, self.board.square_size))
+            self.board.window.blit(legal_spot_image, (col * self.board.square_size, row * self.board.square_size))
+        pygame.display.flip()
+
         move = None
         while move is None:
             for event in pygame.event.get():
