@@ -13,10 +13,11 @@ class Board:
         pygame.display.set_caption("Chess Board")
 
         self.colors = [pygame.Color(255, 206, 158), pygame.Color(209, 139, 71)]  # Light and dark squares
+
         self.pieces_blocking_map = self.__initialize_blocking_map()
         self.pieces_move_map = self.__initialize_move_map()
-        self.update_legal_moves()
 
+        self.update_legal_moves()
     def __create_board(self):
         board = [[None for _ in range(8)] for _ in range(8)]
         self.__setup_pieces(board)
@@ -32,7 +33,6 @@ class Board:
         for i, piece in enumerate(placement):
             board[0][i] = piece('white', (0, i))
             board[7][i] = piece('black', (7, i))
-
     def __initialize_blocking_map(self):
         map = {}
         for i in range(8):
@@ -53,6 +53,7 @@ class Board:
                     map[piece] = free_spots
         return map
 
+
     def __draw_board(self):
         for row in range(8):
             for col in range(8):
@@ -71,6 +72,7 @@ class Board:
     def display(self):
         self.__draw_board()
 
+
     def close_out(self, piece):
         (free_spots, blocking_pieces) = self.__get_free_spots_and_blocking_DIAGONAL(piece)
         result = self.__get_free_spots_and_blocking_STRAIGHT(piece)
@@ -78,7 +80,6 @@ class Board:
         result = self.__get_free_spots_and_blocking_L(piece)
         blocking_pieces += result[1]
         return blocking_pieces
-
     def get_free_spots_and_blocking(self, piece):
         if isinstance(piece, Bishop) or isinstance(piece, Queen):
             (free_spots, blocking_pieces) = self.__get_free_spots_and_blocking_DIAGONAL(piece)
@@ -103,7 +104,6 @@ class Board:
         else:
             print("No valid piece")
             return None
-
     def __get_free_spots_and_blocking_DIAGONAL(self, piece):
         free_spots = []
         blocking_pieces = []
@@ -139,7 +139,6 @@ class Board:
                 blocking_pieces.append(spot)
                 break
         return (free_spots, blocking_pieces)
-
     def __get_free_spots_and_blocking_STRAIGHT(self, piece):
         free_spots = []
         blocking_pieces = []
@@ -176,7 +175,6 @@ class Board:
                 blocking_pieces.append(spot)
                 break
         return (free_spots, blocking_pieces)
-
     def __get_free_spots_and_blocking_L(self, piece):
         free_spots = []
         blocking_pieces = []
@@ -234,7 +232,6 @@ class Board:
                 if spot is not None:
                     blocking_pieces.append(spot)
         return (free_spots, blocking_pieces)
-
     def __get_free_spots_and_blocking_Pawn(self, piece):
         free_spots = []
         blocking_pieces = []
@@ -264,7 +261,6 @@ class Board:
             if spot is not None:
                 blocking_pieces.append(spot)
         return (free_spots, blocking_pieces)
-
     def __get_free_spots_and_blocking_King(self, piece):
         free_spots = []
         blocking_pieces = []
@@ -319,8 +315,6 @@ class Board:
         return (free_spots, blocking_pieces)
 
 
-
-
     def process_move(self, player, move):
         piece = move["piece"]
         new_spot = move["to_spot"]
@@ -329,18 +323,44 @@ class Board:
         old_pieces_blocked_by_piece = self.pieces_blocking_map[piece]
 
         self.board[i][j] = None
-        self.board[new_spot[0]][new_spot[1]] = piece
+        if self.board[new_spot[0]][new_spot[1]] is not None:
+            piece_to_capture = self.board[new_spot[0]][new_spot[1]]
+            self.pieces_move_map.pop(piece_to_capture, None)
+            self.board[new_spot[0]][new_spot[1]] = piece
+
+            #DELETE uit blocking map
+        else:
+            self.board[new_spot[0]][new_spot[1]] = piece
         piece.update_position(new_spot)
+
+        if isinstance(piece, Pawn):
+            piece.first_move_done()
 
         new_pieces_blocked_by_piece = self.close_out(piece)
         all_impacted_pieces = old_pieces_blocked_by_piece.union(set(new_pieces_blocked_by_piece))
+
         self.pieces_blocking_map[piece] = set(new_pieces_blocked_by_piece)
+
         for impacted_piece in all_impacted_pieces:
-            (free_spots, blocking_pieces) = self.get_free_spots_and_blocking(piece)
+            (free_spots, blocking_pieces) = self.get_free_spots_and_blocking(impacted_piece)
             for blocking_piece in blocking_pieces:
-                self.pieces_blocking_map[blocking_piece].add(piece)
+                if blocking_piece.color == impacted_piece.color:
+                    self.pieces_blocking_map[blocking_piece].add(impacted_piece)
+                else:
+                    free_spots.append(blocking_piece.position)
             self.pieces_move_map[impacted_piece] = free_spots
             impacted_piece.set_legal_moves(free_spots)
+
+
+        (free_spots, blocking_pieces) = self.get_free_spots_and_blocking(piece)
+        for blocking_piece in blocking_pieces:
+            if blocking_piece.color == player:
+                self.pieces_blocking_map[blocking_piece].add(piece)
+            else:
+                free_spots.append(blocking_piece.position)
+        self.pieces_move_map[piece] = free_spots
+        piece.set_legal_moves(free_spots)
+
 
     def get_piece(self, coords):
         return self.board[coords[0]][coords[1]]
@@ -349,3 +369,10 @@ class Board:
         for piece in self.pieces_move_map.keys():
             legal_moves = self.pieces_move_map[piece]
             piece.set_legal_moves(legal_moves)
+
+    def get_game_state(self):
+        game_state = {
+            "legal moves" : self.pieces_move_map,
+            "blocking pieces" : self.pieces_blocking_map
+        }
+        return game_state
